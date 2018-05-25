@@ -6,11 +6,11 @@ How to use:
 
 - A PC can typically only connect to up to 6 Veros
 - Edit the table in testcomms.py to contain the Vero SPxxxxxx and its corresponding Mac address (=hex of xxxxxx)
-- All the devices must be turned on prior to starting the script
+- All the devices MUST be turned on prior to starting the script
 - run 
 > python testcomms.py
-- this will start collecting data
-
+- this will start collecting data: display it on output and save it to file with filename like voltage_measurements_23_May_2018_183222.csv
+- you may stop the process at any time, or disconnect or turn off any vero after script has begun. Any disconnected Vero it will automatically try to reconnect peroidically.
 
 - note you may need to install prerequisites:
 > pip install pybluez
