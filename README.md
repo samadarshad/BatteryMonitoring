@@ -5,7 +5,7 @@ Script adapted from SimDoor to do battery monitoring
 ## How to use
 - Pair the PC with all Veros that will be tested
 - Edit the table in testcomms.py to contain the Vero SPxxxxxx and its corresponding Mac address (=hex of xxxxxx)
-- All the devices MUST be turned on prior to starting the script
+
 - run 
 > python log_voltages.py
 - this will start collecting data: display it on output and save it to file with filename like voltage_measurements_23_May_2018_183222.csv
