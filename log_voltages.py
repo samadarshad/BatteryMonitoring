@@ -6,7 +6,7 @@ import time
 import os
 import subprocess
 import csv
-import numpy as np
+# import numpy as np
 # import splitHex
 
 
@@ -70,65 +70,6 @@ def getTemplate( scanner ):
     probe.write( template )
     probe.close()
 
-def match(probe, candidate):
-    output = subprocess.check_output(['/home/pi/SimMatcher/matcher', probe, candidate], env=env).decode("utf-8").rstrip().split(',')
-    return float(output[-1])
-
-def runMatches():
-    name = None
-    bestScore = 0
-    folderName = "./simprinters"
-    for file in os.listdir( folderName ):
-        if file.endswith(".fmr"):
-            candidateName = file
-            score = match('./probe.fmr', os.path.join( folderName, file))
-            print( score )
-            if score > bestScore:
-                bestScore = score
-                name = candidateName
-    return name, bestScore
-
-def sentry():
-    scanner = Scanner( macAddr = 'F0:AC:D7:C5:BA:57') # F0:AC:D7:CD:AC:8F' ) # dev board: F0:AC:D7:C5:BA:57
-    # 'F0:AC:D7:C0:00:00'
-    scanner.connect()
-
-    # wake up UN20
-    scanner.sendMsg( message.un20WakeUp )
-    time.sleep( 5 )
-
-    door = Door()
-
-    try:
-        while True:
-            time.sleep( 2 )
-            # set resting UI
-            scanner.sendMsg( message.restingMsg )
-            scanner.sendMsg( message.captureImage )
-            if scanner.ok():
-                scanner.sendMsg( message.getQuality )
-                if not scanner.ok() or scanner.lastReply.getQuality() < QUALITY_THRESHOLD:
-                    scanner.sendMsg( message.redSmile )
-                    continue
-
-                scanner.sendMsg( message.greenSmile )
-                scanner.sendMsg( message.generateTemplate )
-                if not scanner.ok():
-                    continue
-                template = getTemplate( scanner )
-                name, bestScore = runMatches()
-                print( name )
-                print( bestScore )
-                if( bestScore > MATCH_THRESHOLD ):
-                    scanner.sendMsg( message.accessGrantedLight )
-                    door.toggle()
-                else:
-                    scanner.sendMsg( message.accessDeniedLight )
-    except Exception as e:
-        print( "cleaning up") 
-        print( e )
-        scanner.disconnect()
-        door.cleanup()
 
 
 
@@ -186,19 +127,16 @@ def getBatteryIfConnected(scanner):
         except:
             return 0
 
+def tryToConnect(scanner):
+    try:
+        scanner.connect()
+    except:
+        pass
+
 def getBattery(scanner):
     scanner.sendMsg (message.getSensorInfo)
     return scanner.lastReply.getBattery1Level()
 
-# def getBattery(scanner):
-#     scanner.sendMsg (message.getSensorInfo)
-#     print "Battery1: "
-#     print(scanner.lastReply.getBattery1Level())
-
-
-protoboard_mac = 'F0:AC:D7:C5:BA:57'
-SP657527_mac = 'F0:AC:D7:CA:08:77'
-SP568061_mac = 'F0:AC:D7:C8:AA:FD'
 
 # Veros = [
 #         ['SP657527', 'F0:AC:D7:CA:08:77'],
@@ -217,11 +155,25 @@ Veros = [
         ['SP639507', 'F0:AC:D7:C9:C2:13'],
         ['SP872110', 'F0:AC:D7:CD:4E:AE'],
         ['SP359066', 'F0:AC:D7:C5:7A:9A']
+        # ['SP657527', 'F0:AC:D7:CA:08:77'],
+        # ['SP568061', 'F0:AC:D7:C8:AA:FD']
         ]
 
+starting_time_seconds = int(time.time())
+
+def getTimeFromStart():
+    return int(time.time()) - starting_time_seconds
+
 IS_CONTINUOUS_SCANNING = False
-# numberOfScanners = len(Veros)
-numberOfScanners = 6 # maximum number of BT connected = 7
+
+def runTypicalScanningUseCase(scanner):
+    scanner.sendMsg( message.un20WakeUp )
+    runScanningIfConnected(scanner)    
+    runScanningIfConnected(scanner)
+    scanner.sendMsg( message.un20Shutdown )
+
+numberOfScanners = len(Veros)
+# numberOfScanners = 10 
 
 if __name__ == "__main__":
     scannerlist = []
@@ -230,21 +182,20 @@ if __name__ == "__main__":
     data = []
     time_header = "Time"
     time_data = []
+    time_seconds_header = "TimeSeconds"
+    time_seconds_data = []
     count_header = "Count"
     count_data = []
-    
-    
-    
+        
     for idx in range(0, numberOfScanners):
         scannerlist.append(Scanner(macAddr = Veros[idx][1]))
 
 
-    for idx in range(0, numberOfScanners):
-        scannerlist[idx].connect()
-        if (IS_CONTINUOUS_SCANNING):
-            scannerlist[idx].sendMsg( message.un20WakeUp )
+    # for idx in range(0, numberOfScanners):
+    #     scannerlist[idx].connect()
+    #     if (IS_CONTINUOUS_SCANNING):
+    #         scannerlist[idx].sendMsg( message.un20WakeUp )
 
-    
 
     for idx in range(0, numberOfScanners):
         data_headers.append(Veros[idx][0])
@@ -252,10 +203,10 @@ if __name__ == "__main__":
 
     print(data_headers)
 
-    aggregate_headers = [count_header] + [time_header] + data_headers
+    aggregate_headers = [count_header] + [time_header] + [time_seconds_header] + data_headers
     aggregate_data = []
 
-    interval_secs = 2
+    interval_secs = 1
     total_time_minutes = 10*60
     total_time_secs = total_time_minutes * 60
     maxtime = (int)(total_time_secs / interval_secs)
@@ -270,19 +221,29 @@ if __name__ == "__main__":
         writer.writerow(aggregate_headers)
 
         for count in range(0, maxtime):
-            for idx in range(0, numberOfScanners):
-                # data_row.append(getBattery(scannerlist[idx]))
-                data_row.append(getBatteryIfConnected(scannerlist[idx]))
-                if (IS_CONTINUOUS_SCANNING):
-                    runScanningIfConnected(scannerlist[idx])
-                time.sleep( interval_secs )
+            for idx in range(0, numberOfScanners):                
+                try:                     
+                    scannerlist[idx].connect()
+                    data_row.append(getBatteryIfConnected(scannerlist[idx]))
+                    if (IS_CONTINUOUS_SCANNING):
+                        runTypicalScanningUseCase(scannerlist[idx])
+                        # scannerlist[idx].sendMsg( message.un20WakeUp )
+                        # runScanningIfConnected(scannerlist[idx])
+                        # time.sleep( interval_secs )
+                        # scannerlist[idx].sendMsg( message.un20Shutdown )
+                        
+                    scannerlist[idx].disconnect()
+                except:
+                    data_row.append(0)
+                    pass
             
             print (data_row)
             data.append(data_row)
             data_row = []
             time_data.append(time.strftime("%a, %d %b %Y %H:%M:%S", time.gmtime()))
+            time_seconds_data.append(getTimeFromStart())
             count_data.append(count)            
-            aggregate_data.append([count_data[count]] + [time_data[count]] + data[count])
+            aggregate_data.append([count_data[count]] + [time_data[count]] + [time_seconds_data[count]] + data[count])
             writer.writerow(aggregate_data[-1])
             output.flush()
     
