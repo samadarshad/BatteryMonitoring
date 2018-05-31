@@ -6,15 +6,9 @@ import time
 import os
 import subprocess
 import csv
-# import numpy as np
-# import splitHex
-
-
-MATCH_THRESHOLD = 35
-QUALITY_THRESHOLD = 60
+import control_plug
 
 env = os.environ.copy()
-env["LD_LIBRARY_PATH"] = '/home/pi/SimMatcher'
 
 class Scanner( object ):
 
@@ -66,20 +60,27 @@ def getTemplate( scanner ):
             break
         i = i + 1
 
-    probe = open("probe.fmr", "wb");
-    probe.write( template )
-    probe.close()
+    # probe = open("probe.fmr", "wb");
+    # probe.write( template )
+    # probe.close()
 
 
 
 
 def runScanningIfConnected(scanner):
     try:
-        runScanning(scanner)
+        runMockScanning(scanner)
     except:
         pass
 
-MAX_WAIT_TIME = 25
+MAX_WAIT_TIME = 5
+
+def runMockScanning(scanner):
+    # scanner.sendMsgUDP( message.restingMsg )
+    scanner.sendMsgUDP( message.captureImage )
+    scanner.sendMsgUDP( message.getQuality ) 
+    # scanner.sendMsgUDP( message.greenSmile )
+    template = getTemplate( scanner )
 
 def runScanning(scanner):
 
@@ -88,15 +89,19 @@ def runScanning(scanner):
 
     # while attempts < MAX_ATTEMPTS:
         waittime = 0
-        scanner.sendMsg( message.restingMsg )
-        scanner.sendMsg( message.captureImage )
-        while (not scanner.ok() and waittime < MAX_WAIT_TIME):
-            scanner.sendMsg( message.captureImage )
-            time.sleep(0.1)
-            waittime = waittime + 1         
+        
+        scanner.sendMsgUDP( message.restingMsg )
+        scanner.sendMsgUDP( message.captureImage )
+        time.sleep( 1 )
+        # while (not scanner.ok() and waittime < MAX_WAIT_TIME):
+        #     scanner.sendMsgUDP( message.captureImage )
+        #     # time.sleep(0.1)
+        #     # waittime = waittime + 1 
+        #     time.sleep(1)
+        #     waittime = waittime + 10       
         if scanner.ok():
-            scanner.sendMsg( message.getQuality ) 
-            scanner.sendMsg( message.greenSmile )
+            scanner.sendMsgUDP( message.getQuality ) 
+            scanner.sendMsgUDP( message.greenSmile )
             template = getTemplate( scanner )
             # break
         else:
@@ -106,7 +111,8 @@ def runScanning(scanner):
     except Exception as e:
         # print( "cleaning up") 
         # print( e )
-        # scanner.disconnect()
+        #
+        scanner.disconnect()
         pass
 
 
@@ -153,10 +159,11 @@ Veros = [
         ['SP477471', 'F0:AC:D7:C7:49:1F'],
         ['SP114478', 'F0:AC:D7:C1:BF:2E'],
         ['SP639507', 'F0:AC:D7:C9:C2:13'],
-        ['SP872110', 'F0:AC:D7:CD:4E:AE'],
-        ['SP359066', 'F0:AC:D7:C5:7A:9A']
-        # ['SP657527', 'F0:AC:D7:CA:08:77'],
-        # ['SP568061', 'F0:AC:D7:C8:AA:FD']
+        # ['SP872110', 'F0:AC:D7:CD:4E:AE'],
+        ['SP434881', 'F0:AC:D7:C6:A2:C1'],
+        ['SP359066', 'F0:AC:D7:C5:7A:9A'],
+        ['SP657527', 'F0:AC:D7:CA:08:77'],
+        ['SP568061', 'F0:AC:D7:C8:AA:FD']
         ]
 
 starting_time_seconds = int(time.time())
@@ -167,10 +174,14 @@ def getTimeFromStart():
 IS_CONTINUOUS_SCANNING = False
 
 def runTypicalScanningUseCase(scanner):
+    scanner.sendMsgUDP( message.redSmile )
     scanner.sendMsg( message.un20WakeUp )
-    runScanningIfConnected(scanner)    
-    runScanningIfConnected(scanner)
-    scanner.sendMsg( message.un20Shutdown )
+    time.sleep( 1 )
+    if scanner.ok():
+        runScanningIfConnected(scanner)    
+        runScanningIfConnected(scanner)
+        scanner.sendMsg( message.un20Shutdown )
+        # time.sleep( 2 )
 
 numberOfScanners = len(Veros)
 # numberOfScanners = 10 
@@ -186,7 +197,8 @@ if __name__ == "__main__":
     time_seconds_data = []
     count_header = "Count"
     count_data = []
-        
+    
+    
     for idx in range(0, numberOfScanners):
         scannerlist.append(Scanner(macAddr = Veros[idx][1]))
 
@@ -207,7 +219,7 @@ if __name__ == "__main__":
     aggregate_data = []
 
     interval_secs = 1
-    total_time_minutes = 10*60
+    total_time_minutes = 20*60
     total_time_secs = total_time_minutes * 60
     maxtime = (int)(total_time_secs / interval_secs)
 
@@ -224,14 +236,13 @@ if __name__ == "__main__":
             for idx in range(0, numberOfScanners):                
                 try:                     
                     scannerlist[idx].connect()
-                    data_row.append(getBatteryIfConnected(scannerlist[idx]))
+                    batterylevel = getBatteryIfConnected(scannerlist[idx])
+                    data_row.append(batterylevel)
                     if (IS_CONTINUOUS_SCANNING):
-                        runTypicalScanningUseCase(scannerlist[idx])
-                        # scannerlist[idx].sendMsg( message.un20WakeUp )
-                        # runScanningIfConnected(scannerlist[idx])
-                        # time.sleep( interval_secs )
-                        # scannerlist[idx].sendMsg( message.un20Shutdown )
-                        
+                        try:
+                            runTypicalScanningUseCase(scannerlist[idx])
+                        except:
+                            pass                        
                     scannerlist[idx].disconnect()
                 except:
                     data_row.append(0)
