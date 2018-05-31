@@ -24,4 +24,4 @@ and other prerequisites that you need to run the script.
 - if you have a TP-Link Wifi Power Socket, and wish to monitor the charging over time (by having the Veros charge for 5 minutes, then unplug for 2 minutes to do measuring, then repeat), you can run another process:
 > python charging_sequence.py
 
-Note you may need to find the IP address of the Wifi Power hub (through Angry IP, scanning 192.168.86.0 - 192.168.86.255) and edit the IP address in control_plug.py
+Note you may need to find the IP address of the Wifi Power hub (through Angry IP, scanning 192.168.86.0 - 192.168.86.255, looking for 'tp-link hub') and edit the IP address in control_plug.py
