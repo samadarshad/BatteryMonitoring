@@ -4,7 +4,7 @@ Script adapted from SimDoor to do battery monitoring
 
 ## How to use
 - Pair the PC with all Veros that will be tested
-- Edit the table in testcomms.py to contain the Vero SPxxxxxx and its corresponding Mac address (=hex of xxxxxx)
+- Edit the table in log_voltages.py to contain the Vero SPxxxxxx
 
 - run 
 > python log_voltages.py
@@ -14,6 +14,9 @@ Script adapted from SimDoor to do battery monitoring
 ## Prereq
 - note you may need to install prerequisites:
 > pip install pybluez
+
+and
+> pip install win_inet_pton
 
 and other prerequisites that you need to run the script.
 
