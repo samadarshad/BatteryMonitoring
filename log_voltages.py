@@ -65,6 +65,7 @@ def getTemplate( scanner ):
     # probe.close()
 
 
+NO_SCANNER_VOLTAGE_VALUE = ''
 
 
 def runScanningIfConnected(scanner):
@@ -129,9 +130,9 @@ def getBatteryIfConnected(scanner):
     except:
         try:
             scanner.connect()
-            return 0
+            return NO_SCANNER_VOLTAGE_VALUE
         except:
-            return 0
+            return NO_SCANNER_VOLTAGE_VALUE
 
 def tryToConnect(scanner):
     try:
@@ -144,27 +145,25 @@ def getBattery(scanner):
     return scanner.lastReply.getBattery1Level()
 
 
-# Veros = [
-#         ['SP657527', 'F0:AC:D7:CA:08:77'],
-#         ['SP568061', 'F0:AC:D7:C8:AA:FD'],
-#         ['proto', 'F0:AC:D7:C5:BA:57']
-#         ]
+
 
 Veros = [
-        ['SP351543', 'F0:AC:D7:C5:5D:37'],
-        ['SP967965', 'F0:AC:D7:CE:C5:1D'],
-        ['SP242160', 'F0:AC:D7:C3:B1:F0'],
-        ['SP144081', 'F0:AC:D7:C2:32:D1'],
-        ['SP246276', 'F0:AC:D7:C3:C2:04'],
-        ['SP477471', 'F0:AC:D7:C7:49:1F'],
-        ['SP114478', 'F0:AC:D7:C1:BF:2E'],
-        ['SP639507', 'F0:AC:D7:C9:C2:13'],
-        # ['SP872110', 'F0:AC:D7:CD:4E:AE'],
-        ['SP434881', 'F0:AC:D7:C6:A2:C1'],
-        ['SP359066', 'F0:AC:D7:C5:7A:9A'],
-        ['SP657527', 'F0:AC:D7:CA:08:77'],
-        ['SP568061', 'F0:AC:D7:C8:AA:FD']
+        ['SP351543'],
+        ['SP967965'],
+        ['SP242160'],
+        ['SP144081'],
+        ['SP246276'],
+        ['SP477471'],
+        ['SP114478'],
+        ['SP639507'],
+        # ['SP872110',
+        ['SP434881'],
+        ['SP359066'],
+        ['SP657527'],
+        ['SP568061']
         ]
+
+Mac_addr_base = 'F0:AC:D7:C'
 
 starting_time_seconds = int(time.time())
 
@@ -186,6 +185,21 @@ def runTypicalScanningUseCase(scanner):
 numberOfScanners = len(Veros)
 # numberOfScanners = 10 
 
+SP_text_offset = 2
+first_mac_idx = (0) 
+second_mac_idx = (1) 
+third_mac_idx = (3) 
+end_mac_idx = (5)
+end_idx = 8
+
+def GetMacAddr(scanner_name):
+    first_mac_hex = ("%X" % int(scanner_name[SP_text_offset:end_idx]))[first_mac_idx:second_mac_idx]
+    second_max_hex = ("%X" % int(scanner_name[SP_text_offset:end_idx]))[second_mac_idx:third_mac_idx]
+    third_mac_hex = ("%X" % int(scanner_name[SP_text_offset:end_idx]))[third_mac_idx:end_mac_idx]
+    mac_addr = (Mac_addr_base + first_mac_hex + ":" + second_max_hex + ":" + third_mac_hex)     
+    print(mac_addr)
+    return mac_addr
+
 if __name__ == "__main__":
     scannerlist = []
     data_headers = []
@@ -198,15 +212,10 @@ if __name__ == "__main__":
     count_header = "Count"
     count_data = []
     
-    
+
     for idx in range(0, numberOfScanners):
-        scannerlist.append(Scanner(macAddr = Veros[idx][1]))
-
-
-    # for idx in range(0, numberOfScanners):
-    #     scannerlist[idx].connect()
-    #     if (IS_CONTINUOUS_SCANNING):
-    #         scannerlist[idx].sendMsg( message.un20WakeUp )
+        mac_addr = GetMacAddr(Veros[idx][0])
+        scannerlist.append(Scanner(macAddr = mac_addr))
 
 
     for idx in range(0, numberOfScanners):
@@ -222,8 +231,6 @@ if __name__ == "__main__":
     total_time_minutes = 20*60
     total_time_secs = total_time_minutes * 60
     maxtime = (int)(total_time_secs / interval_secs)
-
-    # maxtime = 30
 
     filename = "voltage_measurements_" + time.strftime("%d_%b_%Y_%H%M%S", time.gmtime())
     csvfile = filename + '.csv'
@@ -245,7 +252,7 @@ if __name__ == "__main__":
                             pass                        
                     scannerlist[idx].disconnect()
                 except:
-                    data_row.append(0)
+                    data_row.append(NO_SCANNER_VOLTAGE_VALUE)
                     pass
             
             print (data_row)
