@@ -197,7 +197,6 @@ def GetMacAddr(scanner_name):
     second_max_hex = ("%X" % int(scanner_name[SP_text_offset:end_idx]))[second_mac_idx:third_mac_idx]
     third_mac_hex = ("%X" % int(scanner_name[SP_text_offset:end_idx]))[third_mac_idx:end_mac_idx]
     mac_addr = (Mac_addr_base + first_mac_hex + ":" + second_max_hex + ":" + third_mac_hex)     
-    print(mac_addr)
     return mac_addr
 
 if __name__ == "__main__":
